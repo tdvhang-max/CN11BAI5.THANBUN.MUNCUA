@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Đoàn Tàu Tri Thức - Bài 5 - Bộ 2</title>
+    <style>
+        :root {
+            --sky-top: #87CEEB;
+            --sky-bottom: #e0f6ff;
+            --grass-top: #7CFC00;
+            --grass-bottom: #228B22;
+            --track-color: #555;
+            --wood-color: #8b5a2b;
+            --primary: #4a90e2;
+            --danger: #e74c3c;
+            --success: #2ecc71;
+            --warning: #f1c40f;
+            --text-dark: #333;
+            --text-light: #fff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to bottom, var(--sky-top) 0px, var(--sky-bottom) 300px, var(--grass-top) 300px, var(--grass-bottom) 100%);
+            background-color: var(--grass-bottom);
+            background-repeat: no-repeat;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: var(--text-dark);
+        }
+
+        /* Tương tác chuột và cảm ứng */
+        .interactive {
+            pointer-events: auto;
+            touch-action: manipulation;
+        }
+
+        .non-interactive {
+            pointer-events: none;
+        }
+
+        #top-bar {
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 50;
+            position: relative;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .info-group {
+            display: flex;
+            gap: 15px;
+            font-weight: bold;
+            font-size: 14px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s, background 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn-hint { background: var(--warning); color: #333; }
+        .btn-restart { background: var(--danger); color: white; }
+        .btn-audio { background: var(--primary); color: white; }
+        .btn-action { background: var(--success); color: white; font-size: 18px; padding: 12px 24px;}
+
+        #game-area {
+            flex: 1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .clouds {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            height: 50px;
+            z-index: 1;
+            opacity: 0.8;
+            pointer-events: none;
+            background-image: 
+                radial-gradient(circle at 20% 50%, white 20px, transparent 21px),
+                radial-gradient(circle at 25% 40%, white 30px, transparent 31px),
+                radial-gradient(circle at 30% 50%, white 25px, transparent 26px),
+                radial-gradient(circle at 70% 60%, white 20px, transparent 21px),
+                radial-gradient(circle at 75% 45%, white 35px, transparent 36px),
+                radial-gradient(circle at 80% 60%, white 25px, transparent 26px);
+        }
+
+        /* Khu vực đường ray */
+        #track-viewport {
+            height: 240px;
+            flex-shrink: 0;
+            width: 100%;
+            position: relative;
+            z-index: 10;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scroll-behavior: smooth;
+            padding-bottom: 20px; /* Space for wheels */
+        }
+        
+        #track-viewport::-webkit-scrollbar {
+            height: 8px;
+        }
+        #track-viewport::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.2);
+            border-radius: 4px;
+        }
+
+        .rails {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: var(--track-color);
+            min-width: 100%;
+            pointer-events: none;
+        }
+        
+        .sleepers {
+            position: absolute;
+            bottom: 16px;
+            left: 0;
+            right: 0;
+            height: 16px;
+            background-image: repeating-linear-gradient(90deg, transparent, transparent 30px, var(--wood-color) 30px, var(--wood-color) 40px);
+            min-width: 100%;
+            pointer-events: none;
+        }
+
+        /* Bao đóng toàn bộ đoàn tàu */
+        #train-run-wrapper {
+            position: absolute;
+            bottom: 28px;
+            left: 50px;
+            display: flex;
+            align-items: flex-end;
+            z-index: 20;
+            will-change: transform; /* Tối ưu hoạt ảnh */
+        }
+
+        .locomotive {
+            width: 120px;
+            height: 90px;
+            background: #d32f2f;
+            border-radius: 20px 10px 0 0;
+            position: relative;
+            border: 2px solid #b71c1c;
+            flex-shrink: 0;
+            margin-right: -5px;
+            z-index: 25;
+            pointer-events: none;
+        }
+
+        .locomotive::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: -15px;
+            width: 30px;
+            height: 30px;
+            background: #ffeb3b;
+            border-radius: 50%;
+            box-shadow: -5px 0 15px rgba(255,235,59,0.8);
+        }
+
+        .cabin {
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            width: 50px;
+            height: 120px;
+            background: #1976d2;
+            border-radius: 10px 10px 0 0;
+            border: 2px solid #1565c0;
+        }
+
+        .chimney {
+            position: absolute;
+            top: -20px;
+            left: 20px;
+            width: 20px;
+            height: 30px;
+            background: #424242;
+            border-radius: 2px;
+        }
+
+        /* Khói */
+        .smoke-particle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: smokeRise 1.5s linear infinite;
+        }
+        
+        @keyframes smokeRise {
+            0% { transform: scale(0.5) translate(0, 0); opacity: 0.8; }
+            100% { transform: scale(2) translate(-20px, -40px); opacity: 0; }
+        }
+
+        /* Toa xe */
+        .choice-car {
+            display: flex;
+            width: 300px;
+            min-height: 80px;
+            background: white;
+            border: 3px solid #333;
+            border-radius: 10px;
+            position: relative;
+            margin: 5px 15px;
+            padding: 0;
+            box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+            flex-shrink: 0;
+            transition: box-shadow 0.2s, outline 0.2s;
+            outline: 0 solid transparent;
+            /* Required for button override */
+            text-align: center;
+            font-family: inherit;
+        }
+
+        @media (max-width: 768px) {
+            .choice-car {
+                width: 280px;
+                margin: 5px 10px;
+            }
+        }
+
+        .choice-car.in-train {
+            cursor: default;
+            margin: 0; /* No margin when in train, attached via flex */
+            margin-right: 4px;
+        }
+
+        .car-left, .car-right {
+            flex: 1;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            font-weight: 600;
+            line-height: 1.3;
+            pointer-events: none; /* Let the main button handle clicks */
+        }
+        
+        @media (max-width: 768px) {
+            .car-left, .car-right { font-size: 14px; padding: 8px;}
+        }
+
+        .car-right {
+            border-left: 3px dashed rgba(0,0,0,0.3);
+        }
+
+        /* Móc nối */
+        .hitch-left, .hitch-right {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 15px;
+            height: 6px;
+            background: #333;
+            pointer-events: none;
+        }
+        .hitch-left { left: -15px; }
+        .hitch-right { right: -15px; }
+
+        /* Bánh xe */
+        .wheel-container {
+            position: absolute;
+            bottom: -15px;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            pointer-events: none;
+        }
+
+        .wheel {
+            width: 24px;
+            height: 24px;
+            background: #333;
+            border-radius: 50%;
+            border: 3px solid #777;
+            position: relative;
+        }
+
+        .wheel::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 6px;
+            height: 6px;
+            background: #ccc;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .spinning .wheel {
+            animation: spin 0.5s linear infinite;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(-360deg); }
+        }
+
+        /* Colors for cars */
+        .bg-color-0 { background: #bbdefb; } /* Light blue */
+        .bg-color-1 { background: #c8e6c9; } /* Light green */
+        .bg-color-2 { background: #e1bee7; } /* Purple */
+        .bg-color-3 { background: #ffcdd2; } /* Pink */
+        .bg-color-4 { background: #ffe0b2; } /* Orange */
+        .bg-color-5 { background: #b2dfdb; } /* Teal */
+
+        #choice-area {
+            flex: 1;
+            padding: 20px 10px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-content: flex-start;
+            background: rgba(255,255,255,0.1);
+            z-index: 15;
+            padding-bottom: 50px;
+        }
+
+        /* Animation states */
+        .car-correct {
+            box-shadow: 0 0 20px #2ecc71;
+            outline: 4px solid #2ecc71;
+            transform: scale(0.95);
+            z-index: 100;
+        }
+
+        .car-wrong {
+            animation: shake 0.4s ease-in-out;
+            box-shadow: 0 0 20px #e74c3c;
+            outline: 4px solid #e74c3c;
+        }
+
+        .car-hint {
+            outline: 4px solid var(--warning);
+            animation: pulseHint 1s infinite;
+        }
+
+        .dimmed {
+            opacity: 0.5;
+            filter: grayscale(0.5);
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px) rotate(-2deg); }
+            50% { transform: translateX(10px) rotate(2deg); }
+            75% { transform: translateX(-10px) rotate(-2deg); }
+        }
+        
+        @keyframes pulseHint {
+            0% { box-shadow: 0 0 0 0 rgba(241, 196, 15, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(241, 196, 15, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(241, 196, 15, 0); }
+        }
+
+        /* Lớp nền riêng cho hoạt cảnh kết thúc */
+        #trainRunStage {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 100;
+            display: none;
+        }
+
+        /* Định dạng nổi bật cho Toa BẮT ĐẦU */
+        .start-car {
+            background: linear-gradient(135deg, #FFD54F, #FF9800);
+            border: 3px solid #E07900 !important;
+            box-shadow: 0 5px 12px rgba(180, 90, 0, 0.28), inset 0 2px 3px rgba(255, 255, 255, 0.55) !important;
+        }
+        
+        .start-car .car-left, .start-car .car-right {
+            background: transparent !important; /* Dùng nền của thẻ cha */
+            color: #3e2723 !important; /* Màu nâu tối, dễ đọc */
+            font-weight: 700;
+            text-shadow: 0 1px 1px rgba(255, 255, 255, 0.4);
+        }
+        
+        .start-car .car-right {
+            border-left: 3px dashed rgba(255, 255, 255, 0.7) !important;
+        }
+
+        /* Hoạt cảnh tàu nhún nhảy nhẹ */
+        .bouncing {
+            animation: bounceTrain 0.3s alternate infinite;
+        }
+        @keyframes bounceTrain {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(2px); }
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            flex-direction: column;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .modal-box {
+            background: white;
+            color: var(--text-dark);
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 4px solid var(--primary);
+        }
+
+        .modal-box h1 { margin-bottom: 10px; color: var(--primary); }
+        .modal-box h2 { margin-bottom: 20px; color: #555; font-size: 18px; }
+        .modal-box p { font-size: 16px; margin: 10px 0; font-weight: 600; }
+        
+        .result-stats {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .result-stats p { display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; padding-bottom: 8px;}
+        .result-stats p:last-child { border: none; padding-bottom: 0; }
+        .grade { font-size: 24px !important; color: var(--danger); text-align: center; margin-top: 15px !important;}
+        .grade.excellent { color: var(--success); }
+        .grade.good { color: var(--primary); }
+
+        .modal-buttons { display: flex; gap: 15px; justify-content: center; margin-top: 20px; flex-wrap: wrap;}
+    </style>
+</head>
+<body>
+
+    <!-- Màn hình mở đầu -->
+    <div id="start-screen" class="overlay interactive">
+        <div class="modal-box">
+            <h1>ĐOÀN TÀU TRI THỨC</h1>
+            <h2>BÀI 5 – GIÁ THỂ TRỒNG CÂY<br>BỘ 2. THAN BÙN VÀ MÙN CƯA</h2>
+            <p>Hãy nối các toa tàu bằng cách chọn đáp án đúng với câu hỏi ở toa trước đó.</p>
+            <div class="modal-buttons">
+                <button id="btn-start" class="btn btn-action interactive">BẮT ĐẦU CHƠI</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Màn hình kết thúc -->
+    <div id="end-screen" class="overlay hidden interactive">
+        <div class="modal-box">
+            <h1>HOÀN THÀNH CHUYẾN TÀU</h1>
+            <div class="result-stats">
+                <p><span>Điểm số:</span> <span id="res-score">0</span></p>
+                <p><span>Thời gian:</span> <span id="res-time">00:00</span></p>
+                <p><span>Nối:</span> <span id="res-connected">14/14</span></p>
+                <p><span>Số lần chọn sai:</span> <span id="res-errors">0</span></p>
+            </div>
+            <p id="res-grade" class="grade">XUẤT SẮC</p>
+            <div class="modal-buttons">
+                <button id="btn-replay" class="btn btn-action interactive" style="background:var(--primary)">CHƠI LẠI</button>
+                <button id="btn-review" class="btn btn-action interactive" style="background:var(--success)">XEM LẠI ĐOÀN TÀU</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Thanh thông tin -->
+    <div id="top-bar">
+        <div>
+            <strong>Đoàn Tàu Tri Thức - Bài 5</strong>
+        </div>
+        <div class="info-group">
+            <span style="color: var(--danger)">Điểm: <span id="ui-score">0</span></span>
+            <span style="color: var(--primary)">Thời gian: <span id="ui-time">00:00</span></span>
+            <span style="color: var(--success)">Nối: <span id="ui-connected">0/14</span></span>
+            <span style="color: var(--warning)">Lỗi: <span id="ui-errors">0</span></span>
+            <span>Kỷ lục: <span id="ui-record">0</span></span>
+        </div>
+        <div class="info-group">
+            <button id="btn-hint" class="btn btn-hint interactive">GỢI Ý</button>
+            <button id="btn-restart-game" class="btn btn-restart interactive">LÀM LẠI</button>
+            <button id="btn-mute" class="btn btn-audio interactive">TẮT ÂM</button>
+        </div>
+    </div>
+
+    <!-- Khu vực chính -->
+    <div id="game-area">
+        <div class="clouds non-interactive"></div>
+        
+        <!-- Sân khấu riêng để chạy đoàn tàu hoàn chỉnh -->
+        <div id="trainRunStage"></div>
+        
+        <!-- Viewport đường ray -->
+        <div id="track-viewport" class="interactive">
+            <div class="rails non-interactive"></div>
+            <div class="sleepers non-interactive"></div>
+            
+            <!-- Vùng duy nhất chứa đoàn tàu -->
+            <div id="train-run-wrapper">
+                <div class="locomotive" id="locomotive">
+                    <div class="chimney">
+                        <div id="smoke-container"></div>
+                    </div>
+                    <div class="cabin"></div>
+                    <div class="hitch-right"></div>
+                    <div class="wheel-container">
+                        <div class="wheel"></div>
+                        <div class="wheel"></div>
+                        <div class="wheel"></div>
+                    </div>
+                </div>
+                <!-- Các toa nối sẽ được di chuyển vào đây -->
+            </div>
+        </div>
+
+        <!-- Khu vực lựa chọn -->
+        <div id="choice-area" class="interactive">
+            <!-- Nút toa xe sinh ra bằng JS -->
+        </div>
+    </div>
+
+    <script>
+        // BẮT BUỘC: Dữ liệu chính xác như yêu cầu
+        const gameData = [
+            { id: 0, left: "BẮT ĐẦU", right: "Nguồn gốc của than bùn là gì?" },
+            { id: 1, left: "Xác thực vật phân hủy trong điều kiện kị khí", right: "Than bùn có những ưu điểm nào?" },
+            { id: 2, left: "Tơi xốp, nhẹ, thoáng khí; giữ nước và chất dinh dưỡng tốt", right: "Than bùn có nhược điểm gì?" },
+            { id: 3, left: "Ít dinh dưỡng, có tính chua", right: "Bước 1 trong quy trình sản xuất giá thể than bùn là gì?" },
+            { id: 4, left: "Khai thác, tập kết", right: "Bước 2 trong quy trình sản xuất giá thể than bùn là gì?" },
+            { id: 5, left: "Phơi khô, nghiền nhỏ", right: "Bước 3 trong quy trình sản xuất giá thể than bùn là gì?" },
+            { id: 6, left: "Phối trộn, ủ", right: "Bước 4 trong quy trình sản xuất giá thể than bùn là gì?" },
+            { id: 7, left: "Kiểm tra, đóng gói giá thể than bùn", right: "Nguồn gốc của mùn cưa là gì?" },
+            { id: 8, left: "Phế phẩm ngành chế biến gỗ", right: "Mùn cưa có những ưu điểm nào?" },
+            { id: 9, left: "Tơi xốp, ổn định nhiệt; bổ sung chất hữu cơ cho đất", right: "Mùn cưa có nhược điểm gì?" },
+            { id: 10, left: "Độ thoáng khí thấp, giữ ẩm không đều", right: "Bước 1 trong quy trình sản xuất giá thể mùn cưa là gì?" },
+            { id: 11, left: "Tập kết", right: "Bước 2 trong quy trình sản xuất giá thể mùn cưa là gì?" },
+            { id: 12, left: "Phơi khô, đảo đều", right: "Bước 3 trong quy trình sản xuất giá thể mùn cưa là gì?" },
+            { id: 13, left: "Ủ với chế phẩm vi sinh vật", right: "Bước 4 trong quy trình sản xuất giá thể mùn cưa là gì?" },
+            { id: 14, left: "Kiểm tra, đóng gói giá thể mùn cưa", right: "KẾT THÚC" }
+        ];
+
+        const TOTAL_CARDS = gameData.length - 1; // 14 toa lựa chọn
+
+        // State variables
+        let gameStarted = false;
+        let gameLocked = true; // Khoá tương tác lúc đầu
+        let gameFinished = false;
+        let trainRunInProgress = false;
+        let hintActive = false;
+        
+        let score = 0;
+        let timeSeconds = 0;
+        let errors = 0;
+        let connectedCount = 0;
+        let timerInterval = null;
+        let isMuted = false;
+        
+        let expectedNextId = 1;
+        let runningAnimation = null;
+        let originalTrainParent = null;
+        let originalTrainNextSibling = null;
+
+        // DOM Elements
+        const elStartScreen = document.getElementById('start-screen');
+        const elEndScreen = document.getElementById('end-screen');
+        const elBtnStart = document.getElementById('btn-start');
+        const elBtnReplay = document.getElementById('btn-replay');
+        const elBtnReview = document.getElementById('btn-review');
+        
+        const elUiScore = document.getElementById('ui-score');
+        const elUiTime = document.getElementById('ui-time');
+        const elUiConnected = document.getElementById('ui-connected');
+        const elUiErrors = document.getElementById('ui-errors');
+        const elUiRecord = document.getElementById('ui-record');
+        const elBtnHint = document.getElementById('btn-hint');
+        const elBtnRestartGame = document.getElementById('btn-restart-game');
+        const elBtnMute = document.getElementById('btn-mute');
+        
+        const trainWrapper = document.getElementById('train-run-wrapper');
+        const trackViewport = document.getElementById('track-viewport');
+        const choiceArea = document.getElementById('choice-area');
+        const locomotive = document.getElementById('locomotive');
+        const smokeContainer = document.getElementById('smoke-container');
+        const trainRunStage = document.getElementById('trainRunStage');
+
+        // Khởi tạo Audio Context
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playTone(freq, type, duration, vol = 0.1) {
+            if (isMuted || !audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function playCorrectSound() {
+            playTone(523.25, 'sine', 0.1, 0.2); // C5
+            setTimeout(() => playTone(659.25, 'sine', 0.2, 0.2), 100); // E5
+        }
+
+        function playWrongSound() {
+            playTone(150, 'sawtooth', 0.3, 0.15);
+        }
+
+        function playConnectSound() {
+            if (isMuted || !audioCtx) return;
+            // Clank sound using filtered noise
+            const bufferSize = audioCtx.sampleRate * 0.1;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 1000;
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+            noise.start();
+        }
+
+        let trainSoundInterval = null;
+        function startTrainSound() {
+            if (trainSoundInterval || isMuted || !audioCtx) return;
+            let tick = false;
+            trainSoundInterval = setInterval(() => {
+                if(!isMuted && audioCtx) {
+                    playTone(tick ? 100 : 120, 'square', 0.1, 0.05); // Chug chug
+                    tick = !tick;
+                }
+            }, 300);
+            
+            // Whistle start
+            playTone(600, 'square', 0.5, 0.1);
+            playTone(800, 'square', 0.5, 0.1);
+        }
+
+        function stopTrainSound() {
+            if (trainSoundInterval) {
+                clearInterval(trainSoundInterval);
+                trainSoundInterval = null;
+            }
+        }
+
+        // Tạo khói
+        let smokeInterval = null;
+        function startSmoke() {
+            if(smokeInterval) return;
+            locomotive.classList.add('bouncing');
+            trainWrapper.classList.add('bouncing'); // Toàn bộ nhún
+            
+            smokeInterval = setInterval(() => {
+                const smoke = document.createElement('div');
+                smoke.className = 'smoke-particle';
+                smoke.style.width = '15px';
+                smoke.style.height = '15px';
+                smoke.style.left = Math.random() * 10 + 'px';
+                smoke.style.top = Math.random() * 5 + 'px';
+                smokeContainer.appendChild(smoke);
+                
+                setTimeout(() => {
+                    if(smoke.parentNode) smoke.remove();
+                }, 1500);
+            }, 200);
+        }
+
+        function stopSmoke() {
+            if(smokeInterval) {
+                clearInterval(smokeInterval);
+                smokeInterval = null;
+            }
+            locomotive.classList.remove('bouncing');
+            trainWrapper.classList.remove('bouncing');
+            smokeContainer.innerHTML = '';
+        }
+
+        function formatTime(secs) {
+            const m = Math.floor(secs / 60).toString().padStart(2, '0');
+            const s = (secs % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function updateUI() {
+            elUiScore.innerText = score;
+            elUiTime.innerText = formatTime(timeSeconds);
+            elUiConnected.innerText = `${connectedCount}/${TOTAL_CARDS}`;
+            elUiErrors.innerText = errors;
+        }
+
+        function loadRecord() {
+            const rec = localStorage.getItem('knowledgeTrain_B5_S2');
+            if (rec) {
+                const data = JSON.parse(rec);
+                elUiRecord.innerText = `${data.score}đ - Lỗi:${data.errors} - ${formatTime(data.time)}`;
+            } else {
+                elUiRecord.innerText = 'Chưa có';
+            }
+        }
+
+        function saveRecord() {
+            const currentRecStr = localStorage.getItem('knowledgeTrain_B5_S2');
+            let isNewRecord = false;
+            if (!currentRecStr) {
+                isNewRecord = true;
+            } else {
+                const currentRec = JSON.parse(currentRecStr);
+                if (score > currentRec.score) isNewRecord = true;
+                else if (score === currentRec.score && errors < currentRec.errors) isNewRecord = true;
+                else if (score === currentRec.score && errors === currentRec.errors && timeSeconds < currentRec.time) isNewRecord = true;
+            }
+
+            if (isNewRecord) {
+                localStorage.setItem('knowledgeTrain_B5_S2', JSON.stringify({ score, errors, time: timeSeconds }));
+                loadRecord();
+            }
+        }
+
+        // Tạo cấu trúc HTML cho một toa xe
+        function createCarHTML(data, colorIndex, isStart = false) {
+            const bgClass = isStart ? "" : `bg-color-${colorIndex}`;
+            return `
+                <div class="hitch-left"></div>
+                <div class="car-left ${bgClass}">${data.left}</div>
+                <div class="car-right ${bgClass}">${data.right}</div>
+                <div class="hitch-right"></div>
+                <div class="wheel-container">
+                    <div class="wheel"></div>
+                    <div class="wheel"></div>
+                </div>
+            `;
+        }
+
+        // Khởi tạo trò chơi (Xóa cũ, xáo trộn, đặt lại biến)
+        function initGame() {
+            // Đảm bảo không có hoạt cảnh đang chạy
+            if(trainRunInProgress) return;
+            
+            // Xóa mọi train-run-clone dư thừa theo đúng yêu cầu (Dù code này không tạo ra)
+            document.querySelectorAll(".train-run-clone").forEach(el => el.remove());
+
+            // Reset container chính
+            trainWrapper.style.transition = 'none';
+            trainWrapper.style.transform = 'none';
+            trackViewport.scrollLeft = 0;
+            
+            // Giữ lại đầu máy, xóa các toa cũ
+            while(trainWrapper.children.length > 1) {
+                trainWrapper.removeChild(trainWrapper.lastChild);
+            }
+            choiceArea.innerHTML = '';
+
+            // Reset trạng thái
+            score = 0;
+            timeSeconds = 0;
+            errors = 0;
+            connectedCount = 0;
+            expectedNextId = 1;
+            gameFinished = false;
+            hintActive = false;
+            
+            updateUI();
+            loadRecord();
+
+            // Khởi tạo toa BẮT ĐẦU trên đường ray với định dạng nổi bật
+            const startCar = document.createElement('div');
+            startCar.className = 'choice-car in-train non-interactive start-car';
+            startCar.innerHTML = createCarHTML(gameData[0], 0, true);
+            trainWrapper.appendChild(startCar);
+
+            // Chuẩn bị 14 toa lựa chọn
+            let choices = [...gameData.slice(1)];
+            
+            // Xáo trộn mảng Fisher-Yates
+            for (let i = choices.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [choices[i], choices[j]] = [choices[j], choices[i]];
+            }
+
+            // Render các nút lựa chọn
+            choices.forEach((data, i) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'choice-car interactive';
+                btn.dataset.index = data.id;
+                const colorIndex = (data.id % 5) + 1; 
+                btn.innerHTML = createCarHTML(data, colorIndex, false);
+                choiceArea.appendChild(btn);
+            });
+        }
+
+        // Hàm FLIP để di chuyển toa từ choiceArea lên trainWrapper mượt mà
+        function animateCarToTrain(carBtn) {
+            // B1: First - Lấy vị trí hiện tại
+            const firstRect = carBtn.getBoundingClientRect();
+            
+            // B2: Chuyển phần tử sang nhà mới (thay đổi DOM)
+            carBtn.classList.remove('interactive');
+            carBtn.classList.add('in-train', 'non-interactive');
+            // Remove button behavior visually
+            carBtn.style.cursor = 'default';
+            
+            // Append vào đoàn tàu
+            trainWrapper.appendChild(carBtn);
+            
+            // Cuộn track-viewport để toa mới luôn được thấy
+            const scrollTarget = trainWrapper.scrollWidth - trackViewport.clientWidth + 50;
+            if(scrollTarget > 0) {
+                 trackViewport.scrollTo({ left: scrollTarget, behavior: 'smooth' });
+            }
+
+            // B3: Last - Lấy vị trí mới
+            const lastRect = carBtn.getBoundingClientRect();
+            
+            // B4: Invert - Dịch chuyển nó về vị trí cũ bằng CSS transform
+            const deltaX = firstRect.left - lastRect.left;
+            const deltaY = firstRect.top - lastRect.top;
+            
+            // Thêm class spinning cho bánh xe chạy
+            carBtn.classList.add('spinning');
+            
+            carBtn.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+            carBtn.style.transition = 'none'; // Tắt transition để về lập tức
+            
+            // Bắt buộc reflow
+            void carBtn.offsetWidth;
+            
+            // B5: Play - Bật transition và đưa transform về 0
+            carBtn.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1)';
+            carBtn.style.transform = 'translate(0, 0)';
+            
+            playConnectSound();
+
+            // Sau khi hoạt ảnh xong
+            setTimeout(() => {
+                carBtn.style.transition = '';
+                carBtn.style.transform = '';
+                carBtn.classList.remove('spinning');
+                carBtn.classList.remove('car-correct');
+                
+                // Mở khóa để chơi tiếp
+                gameLocked = false;
+                
+                // Kiểm tra kết thúc
+                if (expectedNextId > TOTAL_CARDS) {
+                    handleGameFinish();
+                }
+            }, 600);
+        }
+
+        // SỰ KIỆN TƯƠNG TÁC CHÍNH (Event Delegation) - Đăng ký 1 lần duy nhất
+        choiceArea.addEventListener('pointerup', function(event) {
+            // Không phản hồi nếu game đang khóa hoặc đã kết thúc
+            if (!gameStarted || gameLocked || gameFinished) return;
+
+            // Tìm button gần nhất có class choice-car
+            const carBtn = event.target.closest('.choice-car');
+            if (!carBtn) return;
+            
+            event.preventDefault(); // Ngăn zoom/scroll mặc định trên mobile
+            
+            const carId = Number(carBtn.dataset.index);
+            handleCarSelection(carBtn, carId);
+        });
+
+        function handleCarSelection(carBtn, carId) {
+            if(hintActive) return; // Khoá bấm lúc đang bật gợi ý
+            gameLocked = true; // Khóa lập tức để ngăn bấm liên tiếp
+
+            // Tắt viền gợi ý nếu có
+            document.querySelectorAll('.choice-car').forEach(el => {
+                el.classList.remove('dimmed', 'car-hint');
+            });
+
+            if (carId === expectedNextId) {
+                // CHỌN ĐÚNG
+                playCorrectSound();
+                score += 10;
+                connectedCount++;
+                expectedNextId++;
+                updateUI();
+                
+                carBtn.classList.add('car-correct'); // Phát sáng xanh, thu nhỏ
+                
+                // Đợi hiệu ứng nhận thao tác (100ms) rồi di chuyển
+                setTimeout(() => {
+                    animateCarToTrain(carBtn);
+                }, 100);
+
+            } else {
+                // CHỌN SAI
+                playWrongSound();
+                errors++;
+                updateUI();
+                
+                carBtn.classList.add('car-wrong');
+                
+                // Hủy class sai và mở khóa sau 500ms
+                setTimeout(() => {
+                    carBtn.classList.remove('car-wrong');
+                    gameLocked = false;
+                }, 500);
+            }
+        }
+
+        // Chức năng GỢI Ý
+        elBtnHint.addEventListener('pointerup', (e) => {
+            e.preventDefault();
+            if (!gameStarted || gameLocked || gameFinished || hintActive) return;
+            
+            hintActive = true;
+            const allChoiceCars = Array.from(choiceArea.querySelectorAll('.choice-car'));
+            
+            let targetCar = null;
+            allChoiceCars.forEach(car => {
+                if (Number(car.dataset.index) === expectedNextId) {
+                    targetCar = car;
+                    car.classList.add('car-hint');
+                } else {
+                    car.classList.add('dimmed');
+                }
+            });
+
+            setTimeout(() => {
+                if(targetCar) targetCar.classList.remove('car-hint');
+                allChoiceCars.forEach(car => car.classList.remove('dimmed'));
+                hintActive = false;
+            }, 2000);
+        });
+
+        // Bắt đầu chơi
+        elBtnStart.addEventListener('pointerup', (e) => {
+            e.preventDefault();
+            initAudio(); // Initialize audio context on first user gesture
+            elStartScreen.classList.add('hidden');
+            
+            initGame();
+            
+            gameStarted = true;
+            gameLocked = false;
+            gameFinished = false;
+            
+            // Khởi động đồng hồ
+            if(timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if(!gameFinished) {
+                    timeSeconds++;
+                    elUiTime.innerText = formatTime(timeSeconds);
+                }
+            }, 1000);
+        });
+
+        // Nút tắt âm
+        elBtnMute.addEventListener('pointerup', (e) => {
+            e.preventDefault();
+            isMuted = !isMuted;
+            elBtnMute.innerText = isMuted ? "BẬT ÂM" : "TẮT ÂM";
+            elBtnMute.style.background = isMuted ? "#7f8c8d" : "var(--primary)";
+        });
+
+        // KẾT THÚC GAME VÀ CHẠY ĐOÀN TÀU ĐỘC NHẤT
+        function handleGameFinish() {
+            gameFinished = true;
+            gameLocked = true;
+            clearInterval(timerInterval);
+            saveRecord();
+            
+            // Đưa khung nhìn nhanh về đầu tàu và cuộn trang lên trên cùng
+            trackViewport.scrollTo({ left: 0, behavior: 'smooth' });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            setTimeout(() => {
+                runTrainAnimation(true);
+            }, 300);
+        }
+
+        // Hàm chạy đoàn tàu hoàn chỉnh bằng Web Animations API trên lớp riêng
+        function runTrainAnimation(showResultAfter = false) {
+            if (trainRunInProgress) return;
+            trainRunInProgress = true;
+            
+            // Lưu lại vị trí DOM ban đầu
+            if (!originalTrainParent) {
+                originalTrainParent = trainWrapper.parentNode;
+                originalTrainNextSibling = trainWrapper.nextSibling;
+            }
+
+            // Tính toán vị trí Y chính xác để chuyển vùng mà không giật hình
+            const wrapperRect = trainWrapper.getBoundingClientRect();
+            const stageRect = trainRunStage.getBoundingClientRect();
+            const topPos = wrapperRect.top - stageRect.top;
+
+            // Bật sân khấu và chuyển toàn bộ đoàn tàu gốc vào
+            trainRunStage.style.display = 'block';
+            trainRunStage.appendChild(trainWrapper);
+
+            // Gán thuộc tính để giữ đoàn tàu thẳng hàng
+            trainWrapper.style.position = 'absolute';
+            trainWrapper.style.left = '0';
+            trainWrapper.style.top = topPos + 'px';
+            trainWrapper.style.bottom = 'auto';
+            trainWrapper.style.width = 'max-content';
+            trainWrapper.style.display = 'flex';
+            trainWrapper.style.flexWrap = 'nowrap';
+            trainWrapper.style.transition = 'none';
+            trainWrapper.style.transform = 'none';
+
+            // Quay bánh xe và bật khói/âm thanh
+            const allCars = trainWrapper.querySelectorAll('.choice-car');
+            allCars.forEach(c => c.classList.add('spinning'));
+            
+            startSmoke();
+            startTrainSound();
+
+            // Chờ trình duyệt xử lý DOM
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    const stageWidth = trainRunStage.clientWidth;
+                    const trainWidth = trainWrapper.scrollWidth;
+                    
+                    // Điểm xuất phát (ngoài mép phải) và điểm kết thúc (ngoài mép trái)
+                    const startX = stageWidth + 30;
+                    const endX = -trainWidth - 30;
+                    const speed = 120; // Pixel / giây
+                    const duration = ((startX - endX) / speed) * 1000;
+
+                    runningAnimation = trainWrapper.animate([
+                        { transform: `translate3d(${startX}px, 0, 0)` },
+                        { transform: `translate3d(${endX}px, 0, 0)` }
+                    ], {
+                        duration: duration,
+                        easing: "linear",
+                        fill: "forwards"
+                    });
+
+                    runningAnimation.onfinish = () => {
+                        stopTrainSound();
+                        stopSmoke();
+                        allCars.forEach(c => c.classList.remove('spinning'));
+                        trainRunStage.style.display = 'none';
+                        
+                        // Trả tàu về vị trí cũ để phục vụ việc xem lại
+                        if (originalTrainParent) {
+                            originalTrainParent.insertBefore(trainWrapper, originalTrainNextSibling);
+                        }
+                        
+                        // Xóa các thuộc tính tạm thời
+                        trainWrapper.style.position = '';
+                        trainWrapper.style.left = '';
+                        trainWrapper.style.top = '';
+                        trainWrapper.style.bottom = '';
+                        trainWrapper.style.width = '';
+                        trainWrapper.style.display = '';
+                        trainWrapper.style.flexWrap = '';
+                        trainWrapper.style.transform = '';
+                        
+                        trainRunInProgress = false;
+                        runningAnimation = null;
+
+                        if (showResultAfter) {
+                            showEndScreen();
+                        }
+                    };
+                });
+            });
+        }
+
+        // Hiển thị kết quả
+        function showEndScreen() {
+            document.getElementById('res-score').innerText = score;
+            document.getElementById('res-time').innerText = formatTime(timeSeconds);
+            document.getElementById('res-connected').innerText = `${connectedCount}/${TOTAL_CARDS}`;
+            document.getElementById('res-errors').innerText = errors;
+
+            const elGrade = document.getElementById('res-grade');
+            elGrade.className = 'grade';
+            if (errors === 0) {
+                elGrade.innerText = 'XUẤT SẮC';
+                elGrade.classList.add('excellent');
+            } else if (errors <= 2) {
+                elGrade.innerText = 'RẤT TỐT';
+                elGrade.classList.add('good');
+            } else {
+                elGrade.innerText = 'ĐÃ HOÀN THÀNH';
+            }
+
+            elEndScreen.classList.remove('hidden');
+        }
+
+        // CHƠI LẠI
+        function resetGameFull() {
+            // Hủy animation nếu đang chạy
+            if (runningAnimation) {
+                runningAnimation.cancel();
+                runningAnimation = null;
+            }
+            trainRunInProgress = false;
+            trainRunStage.style.display = 'none';
+            stopTrainSound();
+            stopSmoke();
+            
+            // Trả tàu về vị trí HTML ban đầu nếu bị kẹt
+            if (originalTrainParent && trainWrapper.parentNode !== originalTrainParent) {
+                originalTrainParent.insertBefore(trainWrapper, originalTrainNextSibling);
+            }
+            
+            // Xóa mọi inline styles
+            trainWrapper.style.position = '';
+            trainWrapper.style.left = '';
+            trainWrapper.style.top = '';
+            trainWrapper.style.bottom = '';
+            trainWrapper.style.width = '';
+            trainWrapper.style.display = '';
+            trainWrapper.style.flexWrap = '';
+            trainWrapper.style.transform = '';
+            trainWrapper.style.transition = '';
+
+            elEndScreen.classList.add('hidden');
+            initGame();
+            gameStarted = true;
+            gameLocked = false;
+            gameFinished = false;
+            
+            if(timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if(!gameFinished) {
+                    timeSeconds++;
+                    elUiTime.innerText = formatTime(timeSeconds);
+                }
+            }, 1000);
+        }
+
+        elBtnReplay.addEventListener('pointerup', (e) => { e.preventDefault(); resetGameFull(); });
+        elBtnRestartGame.addEventListener('pointerup', (e) => { e.preventDefault(); resetGameFull(); });
+
+        // XEM LẠI ĐOÀN TÀU
+        elBtnReview.addEventListener('pointerup', (e) => {
+            e.preventDefault();
+            if(trainRunInProgress) return;
+            elEndScreen.classList.add('hidden');
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            // Setup lại train wrapper vào vị trí để chạy lại lần nữa
+            runTrainAnimation(true);
+        });
+        
+    </script>
+</body>
+</html>
